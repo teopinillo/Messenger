@@ -1,10 +1,5 @@
 package me.theofrancisco;
 
-import java.awt.BorderLayout;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-
 /*
  * References
  * What is a Socket: https://docs.oracle.com/javase/tutorial/networking/sockets/definition.html
@@ -13,102 +8,105 @@ import java.io.IOException;
  * 
  */
 
+import java.awt.BorderLayout;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.StringTokenizer;
 import java.util.Vector;
-
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 
 public class ChatServer extends JFrame {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	static Vector<Socket> clientSockets;
 	static Vector<String> loginNames;
 	private int assignedPort;
 	JLabel errorLbl;
-	
-	ChatServer(){
+	private ServerSocket serverSocket;
+	private static ChatServer chatServer;
+
+	ChatServer() {
 		/*
-		 * A socket is one endpoint of a two-way communication link between two programs running on the network. 
-		 * A socket is bound to a port number so that the TCP layer can identify the application that data is destined to be sent to.
+		 * A socket is one endpoint of a two-way communication link between two
+		 * programs running on the network. A socket is bound to a port number
+		 * so that the TCP layer can identify the application that data is
+		 * destined to be sent to.
 		 */
 		try {
-			ServerSocket server = new ServerSocket(0); //ask the system to allocate an unused port
-			assignedPort = server.getLocalPort();
-			System.out.println ("Assigned Port: "+assignedPort);
+			serverSocket = new ServerSocket(0); // ask the system to
+														// allocate an unused
+														// port
+			
+			assignedPort = serverSocket.getLocalPort();			
 			initGUI();
 			clientSockets = new Vector<>();
 			loginNames = new Vector<>();
-			
-			while (true){
-				Socket client = server.accept();
-				AcceptClient acceptClient = new AcceptClient (client);
+
+			while (true) {
+				Socket clientSocket = serverSocket.accept(); 	//Listens for a connection to be made to this socket and accepts it.
+				errorLbl.setText("status: Connection accepted!");
+				//ChatServer_AcceptClient acceptClient = new ChatServer_AcceptClient(this,client);
+				new ChatServer_AcceptClient(this,clientSocket);
+			    Thread.sleep(500);
 			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		} catch (IOException | InterruptedException e) {
+			errorLbl.setText(e.getMessage());
 		}
 	}
 
-	private void initGUI (){
-		setLayout (new BorderLayout());
-		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setSize (250,100);
+
+	
+		
+		
+	private void initGUI() {
+		
+		//close the socket on exit
+		addWindowListener( new WindowAdapter () {
+			public void windowClosing (WindowEvent e){
+				try {
+					serverSocket.close();
+				} catch (IOException e1) {					
+					e1.printStackTrace();
+				}
+			}			
+		});
+		
+		setLayout(new BorderLayout());
+		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		setSize(250, 100);
 		setTitle("Chat Server");
-		JLabel portLbl = new JLabel ("Assigned Port: "+Integer.toString(assignedPort));
-		errorLbl = new JLabel ("status: ok");
-		add(portLbl,BorderLayout.NORTH);
-		add(errorLbl,BorderLayout.CENTER);		
+		JLabel portLbl = new JLabel("Assigned Port: " + Integer.toString(assignedPort));
+		errorLbl = new JLabel("status: ok");
+		add(portLbl, BorderLayout.NORTH);
+		add(errorLbl, BorderLayout.CENTER);
 		setVisible(true);
 	}
-	
-	public static void main (String...args){
-		ChatServer server = new ChatServer();		
+
+	public static void main(String... args) {
+		chatServer = new ChatServer();
+	}
+
+	public void addLoginName(String loginName) {
+		loginNames.add(loginName);		
+	}
+
+	public void addClientSocket(Socket clientSocket) {
+		clientSockets.add(clientSocket);		
 	}
 	
-	
-	class AcceptClient extends Thread {
-		Socket clientSocket;
-		DataInputStream din;
-		DataOutputStream dout;
-		
-		AcceptClient (Socket client){
-			clientSocket = client;
-			try {
-				din = new DataInputStream (clientSocket.getInputStream());
-				dout = new DataOutputStream (clientSocket.getOutputStream());
-				
-				String loginName = din.readUTF();
-				loginNames.add(loginName);				
-				clientSockets.add(clientSocket);				
-				start();
-				
-			} catch (IOException e) {
-				errorLbl.setText (e.getMessage());
-			}			
-		}
-		
-		public void run(){
-			while(true){
-				try {
-					String msgFromClient = din.readUTF();
-					StringTokenizer st =  new StringTokenizer( msgFromClient);
-					String loginName = st.nextToken();					
-					String msgType = st.nextToken();
-					
-					//inform to all socket for the new login
-					for (int i=0; i<loginNames.size();i++){
-						Socket pSocket = (Socket) clientSockets.elementAt(i);
-						DataOutputStream pOut = new DataOutputStream (pSocket.getOutputStream());
-						pOut.writeUTF(loginName + " has login in.");
-					}
-					
-				} catch (IOException e) {
-					errorLbl.setText(e.getMessage());
-				}
-				
-			}
-		}
+	public Vector<Socket> getClientSockets(){
+		return clientSockets;
+	}
+
+	public Vector<String> getLoginNames(){
+		return loginNames;
+	}
+	public void showInfo(String message) {
+		errorLbl.setText(message);		
 	}
 }
-

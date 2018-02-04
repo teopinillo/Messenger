@@ -5,6 +5,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
 import java.net.Socket;
+import java.util.Date;
+
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -19,36 +21,17 @@ public class ChatClient extends JFrame implements Runnable {
     javax.swing.JTextField portTf;
     JTextField userTf;
     JLabel usernameLbl;    
+    JButton sendBtn;
     
 	Thread thread;
 	
 	DataInputStream din;
 	DataOutputStream dout;
 	
-	String loginName;
-	private int comPort=0;
+	String loginName;	
 	private JTextField usernameTf;
 	private JButton connectBtn;
-	
-	ChatClient() {
-		
-	}
-	
-	private void login (String login) {		
-		loginName = login;				
-		
-		try {
-			socket = new Socket("localhost",comPort);
-			din = new DataInputStream(socket.getInputStream());
-			dout = new DataOutputStream (socket.getOutputStream());
-			dout.writeUTF(loginName);
-			dout.writeUTF(loginName+" " + " LOGIN");			
-			thread = new Thread (this);
-			thread.start();			
-		} catch (IOException e) {	
-			textArea.setText(e.getMessage());		
-		}
-	}
+	private JButton logoutBtn;
 	
 	@Override
 	public void run(){
@@ -56,9 +39,29 @@ public class ChatClient extends JFrame implements Runnable {
 			try {
 				textArea.append("\n" + din.readUTF());
 			} catch (IOException e) {
-				textArea.setText(e.getMessage());
+				textArea.append(e.getMessage()+"\n");
+			}
+			try {
+				Thread.sleep (500);
+			} catch (InterruptedException e) {
+				textArea.append(e.getMessage()+"\n");
 			}
 		}		
+	}
+	
+	private void login (String _loginname, int commPort) {		
+		loginName = _loginname;				
+		
+		try {
+			socket = new Socket("localhost",commPort);
+			din = new DataInputStream(socket.getInputStream());
+			dout = new DataOutputStream (socket.getOutputStream());			
+			dout.writeUTF(loginName +" LOGIN " + ".");			
+			thread = new Thread (this);
+			thread.start();			
+		} catch (IOException e) {	
+			textArea.append(e.getMessage()+"\n");		
+		}
 	}
 	
 	private void setup(){
@@ -79,22 +82,54 @@ public class ChatClient extends JFrame implements Runnable {
 		 portTf.setColumns(10);
 		 panel.add(portTf);
 		
+		 sendBtn = new JButton ("Send >");
+		 logoutBtn = new JButton ("logout");
 		 connectBtn = new JButton ("Sign In");
+		 
+		 
+		 //sign in button action
 		 connectBtn.addActionListener(new ActionListener()  {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {	
 				try{
-				comPort = Integer.parseInt(portTf.getText());
-				login(usernameTf.getText());
+				if (usernameTf.getText().length()<1) return;	
+				  int commPort = Integer.parseInt(portTf.getText());
+				  login(usernameTf.getText(), commPort);
 				}catch (java.lang.NumberFormatException e){
-					textArea.setText(e.getMessage());
+					textArea.append(e.getMessage()+"\n");
 				}
 			}			 
 		 });
+		 
+		 //send button action
+		 sendBtn.addActionListener ( new ActionListener()  {
+			 public void actionPerformed(ActionEvent e){
+				 try {
+					dout.writeUTF(loginName + " " +" DATA " + textArea.getText());
+				} catch (IOException ex) {
+					textArea.append(ex.getMessage()+"\n");
+				}
+			 }
+		 } );
+		 
+		 //logout button action
+		 logoutBtn.addActionListener ( new ActionListener()  {
+			 public void actionPerformed(ActionEvent e){
+				 try {
+					dout.writeUTF(loginName + " " +" LOGOUT " + textArea.getText());
+				} catch (IOException ex) {
+					textArea.append(ex.getMessage()+"\n");
+				}
+			 }
+		 } );
+		 		 
 		
 		textArea = new JTextArea (16,50);
 		panel.add( new JScrollPane(textArea));
 		panel.add(connectBtn);
+		panel.add(logoutBtn);
+		panel.add(sendBtn);
+		
 		add(panel);		
 		setVisible(true);
 	}
