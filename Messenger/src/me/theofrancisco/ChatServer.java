@@ -109,4 +109,10 @@ public class ChatServer extends JFrame {
 		}
 		return sockets;
 	}
+
+
+	public void removeClient(String loginName) {
+		// TODO Auto-generated method stub
+		
+	}
 }

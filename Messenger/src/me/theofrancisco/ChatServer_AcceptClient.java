@@ -83,19 +83,18 @@ public class ChatServer_AcceptClient extends Thread {
 						for (Socket socket: chatServer.getClientSockets() ) {							
 							DataOutputStream pOut = new DataOutputStream ( socket.getOutputStream()) ;
 							pOut.writeUTF(loginName + " has login in.");
+							pOut.close();
 						}
 						break;
 					}
 					case "LOGOUT": {
 						// inform to all socket for the logout
-						int i = loginNames.indexOf(loginName);
-						loginNames.remove(i);
-						clientSockets.remove(i);
+						chatServer.removeClient(loginName);						
 
-						for (i = 0; i < loginNames.size(); i++) {
-							Socket pSocket = (Socket) clientSockets.elementAt(i);
-							DataOutputStream pOut = new DataOutputStream ( pSocket.getOutputStream()) ;
+						for (Socket socket: chatServer.getClientSockets()) {							
+							DataOutputStream pOut = new DataOutputStream ( socket.getOutputStream()) ;
 							pOut.writeUTF(loginName + " has logged out.");
+							pOut.close();
 						}
 						break;
 					}
