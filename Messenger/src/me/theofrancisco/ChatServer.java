@@ -14,7 +14,11 @@ import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Vector;
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 
@@ -23,8 +27,9 @@ public class ChatServer extends JFrame {
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
-	static Vector<Socket> clientSockets;
-	static Vector<String> loginNames;
+	private AtomicInteger clientCount;
+	private static Hashtable<Integer, ClientInfo> clientInfo;
+
 	private int assignedPort;
 	JLabel errorLbl;
 	private ServerSocket serverSocket;
@@ -38,30 +43,27 @@ public class ChatServer extends JFrame {
 		 * destined to be sent to.
 		 */
 		try {
+			clientCount = new AtomicInteger(0);
 			serverSocket = new ServerSocket(0); // ask the system to
 														// allocate an unused
 														// port
 			
 			assignedPort = serverSocket.getLocalPort();			
 			initGUI();
-			clientSockets = new Vector<>();
-			loginNames = new Vector<>();
+			clientInfo = new Hashtable <Integer,ClientInfo> ();
 
 			while (true) {
 				Socket clientSocket = serverSocket.accept(); 	//Listens for a connection to be made to this socket and accepts it.
 				errorLbl.setText("status: Connection accepted!");
-				//ChatServer_AcceptClient acceptClient = new ChatServer_AcceptClient(this,client);
-				new ChatServer_AcceptClient(this,clientSocket);
+				int id = clientCount.incrementAndGet();
+				new ChatServer_AcceptClient(this,clientSocket,id);
 			    Thread.sleep(500);
 			}
 		} catch (IOException | InterruptedException e) {
 			errorLbl.setText(e.getMessage());
 		}
 	}
-
-
 	
-		
 		
 	private void initGUI() {
 		
@@ -90,23 +92,21 @@ public class ChatServer extends JFrame {
 	public static void main(String... args) {
 		chatServer = new ChatServer();
 	}
-
-	public void addLoginName(String loginName) {
-		loginNames.add(loginName);		
-	}
-
-	public void addClientSocket(Socket clientSocket) {
-		clientSockets.add(clientSocket);		
-	}
 	
-	public Vector<Socket> getClientSockets(){
-		return clientSockets;
-	}
-
-	public Vector<String> getLoginNames(){
-		return loginNames;
-	}
 	public void showInfo(String message) {
 		errorLbl.setText(message);		
+	}
+
+	public void addClient(int clientId, String loginName, Socket clientSocket) {
+		clientInfo.put(clientId, new ClientInfo (clientSocket, loginName));		
+	}
+
+
+	public List<Socket> getClientSockets() {
+		ArrayList<Socket> sockets = new ArrayList<>();
+		for (ClientInfo info:clientInfo.values()){
+			sockets.add(info.getSocket());
+		}
+		return sockets;
 	}
 }

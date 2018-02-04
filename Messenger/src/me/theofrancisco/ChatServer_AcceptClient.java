@@ -8,98 +8,115 @@ import java.util.StringTokenizer;
 import java.util.Vector;
 
 public class ChatServer_AcceptClient extends Thread {
-	
-	
-		private Socket clientSocket;		
-		private DataInputStream din;
-		//private DataOutputStream dout;
-		private ChatServer chatServer;
-		private Vector<String> loginNames;
-		private Vector<Socket> clientSockets;
 
-		ChatServer_AcceptClient(ChatServer _chatServer, Socket _clientSocket) {
-			clientSocket = _clientSocket;
-			chatServer = _chatServer;
-			if (chatServer==null){
-				System.out.println("Error Critical: ChatSever is null!");
-				return;
-			}
-			
-			try {
-				din = new DataInputStream(clientSocket.getInputStream());	
-					
-				String msgFromClient = din.readUTF();
-				System.out.println(this.getClass().getName()+" :msgFromCLient: "+msgFromClient);
-				String[] messages = msgFromClient.split("\\s");				
-				String loginName = messages[0];		
-				System.out.println(this.getClass().getName()+" :msgFromCLient: "+loginName);
-				chatServer.showInfo ("status: username: "+loginName+" request login.");	
-				
-				 if (loginName!=null){
-					 chatServer.addLoginName(loginName);
-					 chatServer.addClientSocket (clientSocket);
-					 for (Socket socket: chatServer.getClientSockets() ){
-						 DataOutputStream outData = new DataOutputStream(socket.getOutputStream());
-							outData.writeUTF("user: "+loginName +" has login.");
-						}
-						
-				 }
-							
-				start();
+	private Socket clientSocket;
+	private DataInputStream din;
+	// private DataOutputStream dout;
+	private ChatServer chatServer;
+	private Vector<String> loginNames;
+	private Vector<Socket> clientSockets;
 
-			} catch (IOException e) {
-				chatServer.showInfo (e.getMessage());					
-			}
+	ChatServer_AcceptClient(ChatServer _chatServer, Socket _clientSocket, int clientId) {
+		clientSocket = _clientSocket;
+		chatServer = _chatServer;
+		if (chatServer == null) {
+			System.out.println("Error Critical: ChatSever is null!");
+			return;
 		}
 
-		public void run() {
-			while (true) {
-				try {
-					Thread.sleep(500);
-					String msgFromClient = din.readUTF();
-					StringTokenizer st = new StringTokenizer(msgFromClient);
-					String loginName = st.nextToken();
-					String msgType = st.nextToken();
-					String message = st.nextToken();
-					
-					while (st.hasMoreTokens()) message+=st.nextToken();				
+		try {
+			din = new DataInputStream(clientSocket.getInputStream());
 
-					if (msgType == "LOGIN") {
+			String msgFromClient = din.readUTF();
+			System.out.println(this.getClass().getName() + " :msgFromCLient: " + msgFromClient);
+			String[] messages = msgFromClient.split("\\s");
+			String loginName = messages[0];
+			System.out.println(this.getClass().getName() + " :msgFromCLient: " + loginName);
+			chatServer.showInfo("status: username: " + loginName + " request login.");
+
+			if (loginName != null) {
+				chatServer.addClient(clientId, loginName, clientSocket);
+				//chatServer.addLoginName(loginName);
+				//chatServer.addClientSocket(clientSocket);
+				for (Socket socket : chatServer.getClientSockets()) {
+					DataOutputStream outData = new DataOutputStream(socket.getOutputStream());
+					outData.writeUTF("user: " + loginName + " has login.");
+				}
+
+			}
+
+			start();
+
+		} catch (IOException e) {
+			chatServer.showInfo(e.getMessage());
+		}
+	}
+
+	public void run() {
+		String loginName;
+		String msgType;
+		String message;
+
+		while (true) {
+			try {
+				Thread.sleep(1000);
+				String msgFromClient = din.readUTF();
+				if (msgFromClient.length() > 0) {
+					String messages[] = msgFromClient.split("\\s");
+					loginName = messages[0];
+					msgType = messages[1];
+					messages[0] = "";
+					messages[1] = "";
+					message = "";
+					for (String s : messages)
+						message += s;
+					System.out.println("data recived");
+					System.out.println("loginName: " + loginName);
+					System.out.println("msgType: " + msgType);
+					System.out.println("message: " + message);
+					//loginNames = chatServer.getLoginNames();
+					//clientSockets = chatServer.getClientSockets();
+					
+					switch (msgType) {
+					case "LOGIN": {
 						// inform to all socket for the new login
-						
-						loginNames = chatServer.getLoginNames();
-						clientSockets = chatServer.getClientSockets();
-						
-						for (int i = 0; i < loginNames.size(); i++) {
-							Socket pSocket = (Socket) clientSockets.elementAt(i);
-							DataOutputStream pOut = (DataOutputStream) pSocket.getOutputStream();
-							pOut.writeUTF(loginNames.elementAt(i) + " has login in.");
-						}					
-					} else if (msgType == "LOGOUT") {
+						for (Socket socket: chatServer.getClientSockets() ) {							
+							DataOutputStream pOut = new DataOutputStream ( socket.getOutputStream()) ;
+							pOut.writeUTF(loginName + " has login in.");
+						}
+						break;
+					}
+					case "LOGOUT": {
 						// inform to all socket for the logout
 						int i = loginNames.indexOf(loginName);
 						loginNames.remove(i);
 						clientSockets.remove(i);
-						
+
 						for (i = 0; i < loginNames.size(); i++) {
 							Socket pSocket = (Socket) clientSockets.elementAt(i);
-							DataOutputStream pOut = (DataOutputStream)pSocket.getOutputStream();
-							pOut.writeUTF(loginNames.elementAt(i) + " has logged out.");
+							DataOutputStream pOut = new DataOutputStream ( pSocket.getOutputStream()) ;
+							pOut.writeUTF(loginName + " has logged out.");
 						}
-					} else if (msgType == "DATA") {
-						// inform to all socket for the new message
-						for (int i = 0; i < loginNames.size(); i++) {
-							Socket pSocket = (Socket) clientSockets.elementAt(i);
-							DataOutputStream pOut = (DataOutputStream) pSocket.getOutputStream();
-							pOut.writeUTF(loginNames.elementAt(i) + " : "+message);
-						}
+						break;
 					}
-				} catch (IOException | InterruptedException e) {
-					chatServer.showInfo (e.getMessage());						
+					case "DATA": {
+						System.out.println("\nProcessing Data");
+						// inform to all socket for the new message
+						for (Socket socket: chatServer.getClientSockets()) {							
+							DataOutputStream pOut = new DataOutputStream ( socket.getOutputStream()) ;
+							pOut.writeUTF(loginName + ": " + message);
+							pOut.close();
+						}
+						break;
+					}
+					}
 				}
 
+			} catch (IOException | InterruptedException e) {
+				chatServer.showInfo(e.getMessage());
 			}
+
 		}
-	
+	}
 
 }

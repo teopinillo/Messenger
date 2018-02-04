@@ -42,7 +42,7 @@ public class ChatClient extends JFrame implements Runnable {
 				textArea.append(e.getMessage()+"\n");
 			}
 			try {
-				Thread.sleep (500);
+				Thread.sleep (1000);
 			} catch (InterruptedException e) {
 				textArea.append(e.getMessage()+"\n");
 			}
@@ -66,7 +66,7 @@ public class ChatClient extends JFrame implements Runnable {
 	
 	private void setup(){
 	    setDefaultCloseOperation(EXIT_ON_CLOSE);
-		setSize(580,370);
+		setSize(640,440);
 		JPanel panel = new JPanel();
 		panel.setLayout(new FlowLayout());
 		
@@ -83,9 +83,15 @@ public class ChatClient extends JFrame implements Runnable {
 		 panel.add(portTf);
 		
 		 sendBtn = new JButton ("Send >");
+		 JTextField tfMessage = new JTextField();
+		 tfMessage.setColumns(48);
+		 tfMessage.setSize(50, tfMessage.getPreferredSize().width);
+		 
 		 logoutBtn = new JButton ("logout");
 		 connectBtn = new JButton ("Sign In");
 		 
+		 panel.add(connectBtn);
+		 panel.add(logoutBtn);
 		 
 		 //sign in button action
 		 connectBtn.addActionListener(new ActionListener()  {
@@ -105,9 +111,15 @@ public class ChatClient extends JFrame implements Runnable {
 		 sendBtn.addActionListener ( new ActionListener()  {
 			 public void actionPerformed(ActionEvent e){
 				 try {
-					dout.writeUTF(loginName + " " +" DATA " + textArea.getText());
+					String outputMessage = loginName +" DATA " + tfMessage.getText();
+					dout.writeUTF(outputMessage);
+					System.out.println("sending message: "+outputMessage );
+					System.out.println("Button send pressed");
+					tfMessage.setText("");
 				} catch (IOException ex) {
 					textArea.append(ex.getMessage()+"\n");
+				} catch (NullPointerException ex){					
+					textArea.append("Please log in first\n");
 				}
 			 }
 		 } );
@@ -124,11 +136,16 @@ public class ChatClient extends JFrame implements Runnable {
 		 } );
 		 		 
 		
-		textArea = new JTextArea (16,50);
+		textArea = new JTextArea (20,55);
 		panel.add( new JScrollPane(textArea));
-		panel.add(connectBtn);
-		panel.add(logoutBtn);
-		panel.add(sendBtn);
+		
+		//Button Part
+		JPanel buttonPanel = new JPanel ();
+		 FlowLayout buttonLayout = new FlowLayout();
+		  buttonPanel.setLayout(buttonLayout);
+		   buttonPanel.add(tfMessage);
+		    buttonPanel.add(sendBtn);
+		   panel.add(buttonPanel);
 		
 		add(panel);		
 		setVisible(true);
